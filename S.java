@@ -31,6 +31,8 @@ public class S
             // Send ACK to client
             totalReceived += receive.length;
 
+            System.out.println(totalReceived);
+
             byte[] totalReceivedBytes = Integer.toString(totalReceived).getBytes();
 
             InetAddress ip = DpReceive.getAddress();

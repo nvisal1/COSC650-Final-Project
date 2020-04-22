@@ -1,6 +1,3 @@
-
-// Java program to illustrate Client side 
-// Implementation using DatagramSocket 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -39,7 +36,6 @@ public class C
 
         Socket socket = new Socket(webserver, 80);
 
-
         // Do not flush automatically, we need to write more information
         // to it befoe flushing
         PrintWriter out = new PrintWriter(socket.getOutputStream());
@@ -57,8 +53,13 @@ public class C
 
         String outStr;
 
-        while(( outStr = in.readLine() ) != null ) {
+        StringBuilder totalBytesSent = new StringBuilder();
 
+        boolean isFirstSend = true;
+        long startTime = 0;
+
+        while (!((outStr = in.readLine()).equals("0"))) {
+   
             // Start seperate thread to print line
             WebPagePrinter webPagePrinter = new WebPagePrinter(outStr);
             Thread thread = new Thread(webPagePrinter);
@@ -86,6 +87,12 @@ public class C
     
                     DatagramPacket DpSend = new DatagramPacket(buf, buf.length, ip, 12321); 
     
+                    // Start timer if first send
+                    if (isFirstSend) {
+                        startTime = System.nanoTime();
+                        isFirstSend = false;
+                    }
+
                     ds.send(DpSend); 
 
                     // Get ACK and respond to timeout
@@ -98,8 +105,7 @@ public class C
                     while(true) {
                         try {
                             ds.receive(DpReceive);
-
-                            if (data(receive) != null) {
+                            if (( totalBytesSent = data(receive)) != null) {
                                 break;
                             }
 
@@ -131,7 +137,14 @@ public class C
             }
         }
 
-        System.out.println("done");
+        System.out.println("DONE");
+
+        long endTime = System.nanoTime();
+        long timeInMilli = (endTime - startTime) / 1000000;
+        System.out.println(timeInMilli);
+
+        System.out.println(totalBytesSent);
+
         in.close();
         out.close();
         ds.close();
