@@ -10,6 +10,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.util.Scanner; 
   
 public class C
@@ -70,6 +71,8 @@ public class C
             String sendStr = "";
     
             for (int i = 0; i < outStr.length(); i++) {
+
+                boolean didResend = false;
     
                 count += 1; 
     
@@ -85,12 +88,42 @@ public class C
     
                     ds.send(DpSend); 
 
-                    ds.receive(DpSend);
-
+                    // Get ACK and respond to timeout
+                    
                     byte[] receive = new byte[65535]; 
 
-                    System.out.println(data(receive));
-    
+                    DatagramPacket DpReceive = new DatagramPacket(receive, receive.length); 
+
+                    ds.setSoTimeout(timeout);
+                    while(true) {
+                        try {
+                            ds.receive(DpReceive);
+
+                            if (data(receive) != null) {
+                                break;
+                            }
+
+                        } catch (SocketTimeoutException e) {
+                            if (!didResend) {
+                                ds.send(DpSend);
+                                didResend = true;
+                            } else {
+                                // Failed again after retrying, send message FAIL and quit
+                                outStr = "FAIL";
+
+                                buf = outStr.getBytes();
+
+                                DpSend = new DatagramPacket(buf, buf.length, ip, 12321);
+
+                                ds.send(DpSend);
+
+                                throw new Exception("Failed to get ACK before timeout after resend");
+                            }
+                        }
+                    }
+
+                    System.out.println("ACK");
+
                     sendStr = "";
                     count = 0;
                 }
@@ -102,35 +135,6 @@ public class C
         in.close();
         out.close();
         ds.close();
-  
-        // Step 1:Create the socket object for 
-        // carrying the data. 
-        // DatagramSocket ds = new DatagramSocket(); 
-  
-        // InetAddress ip = InetAddress.getLocalHost(); 
-        // byte buf[] = null; 
-  
-        // loop while user not enters "bye" 
-        // while (true) 
-        // { 
-        //     String inp = sc.nextLine(); 
-  
-        //     // convert the String input into the byte array. 
-        //     buf = inp.getBytes(); 
-  
-        //     // Step 2 : Create the datagramPacket for sending 
-        //     // the data. 
-        //     DatagramPacket DpSend = 
-        //           new DatagramPacket(buf, buf.length, ip, 12321); 
-  
-        //     // Step 3 : invoke the send call to actually send 
-        //     // the data. 
-        //     ds.send(DpSend); 
-  
-        //     // break the loop if user enters "bye" 
-        //     if (inp.equals("bye")) 
-        //         break; 
-        // } 
     } 
 
     public static StringBuilder data(byte[] a) 
@@ -158,7 +162,7 @@ class WebPagePrinter implements Runnable {
     }
 
     public void run() {
-        // System.out.println(this.webPageLine);
+        System.out.println(this.webPageLine);
     }
 
 }
